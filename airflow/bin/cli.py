@@ -364,11 +364,8 @@ def run(args, dag=None):
     ti = TaskInstance(task, args.execution_date)
     ti.refresh_from_db()
 
-    log = logging.getLogger('airflow.task')
-    if args.raw:
-        log = logging.getLogger('airflow.task.raw')
 
-    set_context(log, ti)
+    ti.init_run_context(raw=args.raw)
 
     hostname = socket.getfqdn()
     log.info("Running on host %s", hostname)
@@ -425,17 +422,8 @@ def run(args, dag=None):
             executor.heartbeat()
             executor.end()
 
-    # Child processes should not flush or upload to remote
-    if args.raw:
-        return
 
-    # Force the log to flush. The flush is important because we
-    # might subsequently read from the log to insert into S3 or
-    # Google cloud storage. Explicitly close the handler is
-    # needed in order to upload to remote storage services.
-    for handler in log.handlers:
-        handler.flush()
-        handler.close()
+    logging.shutdown()
 
 
 def task_failed_deps(args):
